@@ -1,5 +1,10 @@
 # polyvia
 
+[![npm](https://img.shields.io/npm/v/polyvia?style=flat-square&color=6366f1&labelColor=3730a3&logo=npm&logoColor=white)](https://www.npmjs.com/package/polyvia)
+[![Node](https://img.shields.io/node/v/polyvia?style=flat-square&color=6366f1&labelColor=3730a3&logo=nodedotjs&logoColor=white)](https://www.npmjs.com/package/polyvia)
+[![License: MIT](https://img.shields.io/badge/license-MIT-6366f1?style=flat-square&labelColor=3730a3)](https://opensource.org/licenses/MIT)
+[![Docs](https://img.shields.io/badge/docs-docs.polyvia.ai-6366f1?style=flat-square&labelColor=3730a3)](https://docs.polyvia.ai/products/js-sdk)
+
 Official TypeScript/JavaScript SDK for [Polyvia AI Platform](https://app.polyvia.ai).
 
 ```ts
