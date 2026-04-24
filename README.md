@@ -319,8 +319,8 @@ try {
 ## Development
 
 ```bash
-git clone https://github.com/polyvia-ai/polyvia-js-sdk
-cd polyvia-js-sdk
+git clone https://github.com/polyvia-ai/polyvia-sdk-typescript
+cd polyvia-sdk-typescript
 npm install
 npm run build
 npm test
