@@ -1,6 +1,6 @@
 {
   "name": "polyvia",
-  "version": "0.1.0",
+  "version": "0.1.1",
   "description": "Official TypeScript/JavaScript SDK for Polyvia AI platform",
   "author": "Polyvia AI <senyao@polyvia.ai>",
   "license": "MIT",
