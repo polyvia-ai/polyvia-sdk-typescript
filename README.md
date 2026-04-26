@@ -10,7 +10,7 @@ Official TypeScript/JavaScript SDK for [Polyvia AI Platform](https://app.polyvia
 ```ts
 import { Polyvia } from "polyvia";
 
-const client = new Polyvia({ apiKey: "poly_..." });
+const client = new Polyvia({ apiKey: "poly_<key>" });
 
 // Ingest → wait → query
 const result = await client.ingest.file("report.pdf", { name: "Q4 Report" });
@@ -61,10 +61,10 @@ All keys start with `poly_`.
 
 ```ts
 // Pass explicitly
-const client = new Polyvia({ apiKey: "poly_..." });
+const client = new Polyvia({ apiKey: "poly_<key>" });
 
 // Or set the environment variable and omit the argument
-// export POLYVIA_API_KEY=poly_...
+// export POLYVIA_API_KEY=poly_<key>
 const client = new Polyvia();
 ```
 
@@ -78,14 +78,14 @@ const client = new Polyvia();
 // Single file — accepts a file path, Buffer, or Blob
 const result = await client.ingest.file("report.pdf", {
   name: "Q4 Report",
-  groupId: "g_...",
+  groupId: "g_<id>",
 });
-// { document_id: "...", task_id: "...", status: "pending" }
+// { "document_id": "<id>", "task_id": "<id>", status: "pending" }
 
 // Multiple files
 const items = await client.ingest.batch(["q3.pdf", "q4.pdf"], {
   names: ["Q3 Report", "Q4 Report"],
-  groupId: "g_...",
+  groupId: "g_<id>",
 });
 
 // Check status
@@ -105,13 +105,13 @@ const done = await client.ingest.wait(result.task_id, {
 const answer = await client.query("What risks are mentioned across all reports?");
 
 // Single document (fastest)
-const answer = await client.query("Summarise section 3.", { documentId: "doc_..." });
+const answer = await client.query("Summarise section 3.", { documentId: "doc_<id>" });
 
 // Scoped to a group
-const answer = await client.query("Key findings?", { groupId: "g_..." });
+const answer = await client.query("Key findings?", { groupId: "g_<id>" });
 
 // Multiple groups
-const answer = await client.query("Compare results.", { groupIds: ["g_...", "g_..."] });
+const answer = await client.query("Compare results.", { groupIds: ["g_<id>", "g_<id>"] });
 
 console.log(answer.answer);
 ```
@@ -137,18 +137,18 @@ await client.groups.delete(group_id);
 
 ```ts
 // List — filter by status and/or group
-const docs = await client.documents.list({ status: "completed", groupId: "g_..." });
-const docs = await client.documents.list({ groupIds: ["g_...", "g_..."] });
+const docs = await client.documents.list({ status: "completed", groupId: "g_<id>" });
+const docs = await client.documents.list({ groupIds: ["g_<id>", "g_<id>"] });
 
 // Get one
-const doc = await client.documents.get("doc_...");
+const doc = await client.documents.get("doc_<id>");
 
 // Move to a different group / remove from group
-await client.documents.update("doc_...", { groupId: "g_other" });
-await client.documents.update("doc_...", { groupId: null });
+await client.documents.update("doc_<id>", { groupId: "g_other" });
+await client.documents.update("doc_<id>", { groupId: null });
 
 // Delete
-await client.documents.delete("doc_...");
+await client.documents.delete("doc_<id>");
 ```
 
 ### Usage & Rate Limits
@@ -187,7 +187,7 @@ and query documents without any manual tool-dispatch code.
 import Anthropic from "@anthropic-ai/sdk";
 import { Polyvia } from "polyvia";
 
-const polyvia = new Polyvia({ apiKey: "poly_..." });
+const polyvia = new Polyvia({ apiKey: "poly_<key>" });
 const ant = new Anthropic();
 
 const response = await ant.beta.messages.create({
@@ -205,7 +205,7 @@ const response = await ant.beta.messages.create({
 import OpenAI from "openai";
 import { Polyvia } from "polyvia";
 
-const polyvia = new Polyvia({ apiKey: "poly_..." });
+const polyvia = new Polyvia({ apiKey: "poly_<key>" });
 const oai = new OpenAI();
 
 const response = await oai.responses.create({
@@ -223,7 +223,7 @@ import { Agent, Runner } from "@openai/agents";
 import { MCPServerStreamableHTTP } from "@openai/agents/mcp";
 import { Polyvia } from "polyvia";
 
-const cfg = new Polyvia({ apiKey: "poly_..." }).mcp.toOpenAIMcpServer();
+const cfg = new Polyvia({ apiKey: "poly_<key>" }).mcp.toOpenAIMcpServer();
 const server = new MCPServerStreamableHTTP({ url: cfg.url, headers: cfg.headers });
 const agent = new Agent({ name: "Research", mcpServers: [server] });
 const result = await Runner.runSync(agent, "What do my Q4 reports say about revenue?");
@@ -236,7 +236,7 @@ console.log(result.finalOutput);
 import { Polyvia } from "polyvia";
 
 // Print a snippet to copy-paste into ~/.claude/claude_desktop_config.json
-new Polyvia({ apiKey: "poly_..." }).mcp.printClaudeDesktopSnippet();
+new Polyvia({ apiKey: "poly_<key>" }).mcp.printClaudeDesktopSnippet();
 ```
 
 ---
@@ -252,7 +252,7 @@ the REST API directly — for frameworks that don't support remote MCP.
 import OpenAI from "openai";
 import { Polyvia } from "polyvia";
 
-const client = new Polyvia({ apiKey: "poly_..." });
+const client = new Polyvia({ apiKey: "poly_<key>" });
 const oai = new OpenAI();
 const [tools, callTool] = client.tools.openai();
 
@@ -274,7 +274,7 @@ for (const tc of response.choices[0]?.message.tool_calls ?? []) {
 import Anthropic from "@anthropic-ai/sdk";
 import { Polyvia } from "polyvia";
 
-const client = new Polyvia({ apiKey: "poly_..." });
+const client = new Polyvia({ apiKey: "poly_<key>" });
 const ant = new Anthropic();
 const [tools, callTool] = client.tools.anthropic();
 
