@@ -1,12 +1,23 @@
 import { readFile } from "node:fs/promises";
 import { basename, extname } from "node:path";
-import { IngestionError, IngestionTimeout } from "../errors.js";
+import { IngestionError, IngestionTimeout, NotFoundError } from "../errors.js";
 import type { Transport } from "../transport.js";
 import type {
   BatchIngestItem,
+  Document,
   IngestResult,
   IngestionStatus,
+  IngestionStatusValue,
 } from "../types.js";
+
+// Document.status vocabulary → ingestion-task status vocabulary. Used when we
+// fall back to the persistent document status (see status()).
+const DOC_STATUS_TO_TASK: Record<string, IngestionStatusValue> = {
+  uploading: "pending",
+  parsing: "parsing",
+  completed: "completed",
+  failed: "failed",
+};
 
 export interface IngestFileOptions {
   name?: string;
@@ -129,24 +140,25 @@ export class IngestResource {
       {},
     );
 
-    // PUT bytes straight to Convex storage. Important: do NOT send our
-    // Polyvia Authorization header — the URL is already signed, and we
-    // shouldn't leak the API key to a different origin.
-    const putRes = await fetch(upload_url, {
-      method: "PUT",
+    // POST bytes straight to Convex storage (its upload URLs require POST —
+    // PUT returns 405). Important: do NOT send our Polyvia Authorization
+    // header — the URL is already signed, and we shouldn't leak the API key
+    // to a different origin.
+    const uploadRes = await fetch(upload_url, {
+      method: "POST",
       headers: { "Content-Type": source.contentType },
       // Cast: Uint8Array is a valid BlobPart at runtime in Node 18+ and all
       // browsers, but TS's lib.dom types disagree about ArrayBufferLike vs
       // ArrayBuffer. The runtime behavior is well-defined.
       body: new Blob([source.bytes as unknown as BlobPart]),
     });
-    if (!putRes.ok) {
-      const detail = await putRes.text().catch(() => "");
+    if (!uploadRes.ok) {
+      const detail = await uploadRes.text().catch(() => "");
       throw new Error(
-        `Direct upload to storage failed (HTTP ${putRes.status}): ${detail}`,
+        `Direct upload to storage failed (HTTP ${uploadRes.status}): ${detail}`,
       );
     }
-    const { storageId } = (await putRes.json()) as ConvexStoragePutResponse;
+    const { storageId } = (await uploadRes.json()) as ConvexStoragePutResponse;
 
     const body: FinalizeBody = {
       storage_id: storageId,
@@ -219,9 +231,24 @@ export class IngestResource {
     return results;
   }
 
-  /** Poll ingestion status for a task. */
+  /** Poll ingestion status for a task.
+   *
+   *  Falls back to the document's persisted status if the in-memory
+   *  ingest-status endpoint can't find the task — e.g. the poll hit a different
+   *  serverless instance than the one that started it (task_id === document_id). */
   async status(taskId: string): Promise<IngestionStatus> {
-    return this.transport.get<IngestionStatus>(`/api/v1/ingest/${taskId}`);
+    try {
+      return await this.transport.get<IngestionStatus>(`/api/v1/ingest/${taskId}`);
+    } catch (e) {
+      if (!(e instanceof NotFoundError)) throw e;
+      const doc = await this.transport.get<Document>(`/api/v1/documents/${taskId}`);
+      return {
+        task_id: taskId,
+        document_id: doc.id,
+        status: (DOC_STATUS_TO_TASK[doc.status] ?? doc.status) as IngestionStatusValue,
+        error: null,
+      };
+    }
   }
 
   /** Block until the task is completed, polling every `pollInterval` seconds.
