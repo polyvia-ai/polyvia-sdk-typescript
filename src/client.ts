@@ -1,6 +1,6 @@
 import { MCPConfig } from "./mcp.js";
 import { DocumentsResource } from "./resources/documents.js";
-import { GroupsResource } from "./resources/groups.js";
+import { GroupsResource, resolveGroupId, type GroupRef } from "./resources/groups.js";
 import { IngestResource } from "./resources/ingest.js";
 import { ToolsResource } from "./tools.js";
 import { Transport } from "./transport.js";
@@ -16,7 +16,10 @@ export interface PolyviaOptions {
 export interface QueryOptions {
   /** Restrict to a single document (fastest). */
   documentId?: string;
-  /** Restrict to documents in a specific group. */
+  /** Restrict to one group by **name** (or a {@link Group}). The group must
+   *  already exist. Prefer this over `groupId`. */
+  group?: GroupRef;
+  /** Restrict to one group by backend id. */
   groupId?: string;
   /** Restrict to documents across multiple groups. */
   groupIds?: string[];
@@ -58,10 +61,16 @@ export class Polyvia {
 
   /** Query documents with natural language. */
   async query(question: string, options: QueryOptions = {}): Promise<QueryResult> {
+    const groupId =
+      options.group !== undefined &&
+      options.groupId === undefined &&
+      options.groupIds === undefined
+        ? await resolveGroupId(this._transport, options.group, undefined, { create: false })
+        : options.groupId;
     return this._transport.post<QueryResult>("/api/v1/query", {
       query: question,
       ...(options.documentId && { document_id: options.documentId }),
-      ...(options.groupId && { group_id: options.groupId }),
+      ...(groupId && { group_id: groupId }),
       ...(options.groupIds && { group_ids: options.groupIds }),
     });
   }

@@ -84,14 +84,14 @@ const client = new Polyvia();
 // Single file — accepts a file path, Buffer, or Blob
 const result = await client.ingest.file("report.pdf", {
   name: "Q4 Report",
-  groupId: "g_<id>",
+  group: "Finance",   // group name — created if it doesn't exist yet
 });
 // { "document_id": "<id>", "task_id": "<id>", status: "pending" }
 
-// Multiple files
+// Multiple files (the group is resolved once for the batch)
 const items = await client.ingest.batch(["q3.pdf", "q4.pdf"], {
   names: ["Q3 Report", "Q4 Report"],
-  groupId: "g_<id>",
+  group: "Finance",
 });
 
 // Check status
@@ -113,10 +113,10 @@ const answer = await client.query("What risks are mentioned across all reports?"
 // Single document (fastest)
 const answer = await client.query("Summarise section 3.", { documentId: "doc_<id>" });
 
-// Scoped to a group
-const answer = await client.query("Key findings?", { groupId: "g_<id>" });
+// Scoped to a group — by name (the group must already exist)
+const answer = await client.query("Key findings?", { group: "Finance" });
 
-// Multiple groups
+// Multiple groups — by id
 const answer = await client.query("Compare results.", { groupIds: ["g_<id>", "g_<id>"] });
 
 console.log(answer.answer);
@@ -124,19 +124,32 @@ console.log(answer.answer);
 
 ### Groups
 
+Groups have a human **name** and an opaque backend **id**. You rarely need the
+id — pass the name straight to `ingest` / `query` (above) and the SDK resolves
+it. When you do want the group object, `getOrCreate` is the easy way in.
+
 ```ts
-// Create
-const { group_id } = await client.groups.create("Finance");
+// Idempotent: returns the existing "Finance" group, or creates it. Matched by
+// exact name, so it never makes duplicates.
+const group = await client.groups.getOrCreate("Finance");
+group.id;     // the backend id, if you ever need it
+group.name;   // "Finance"
+
+// Look one up without creating it (returns undefined if there isn't one)
+const existing = await client.groups.find("Finance");
 
 // List
 const groups = await client.groups.list();
 
 // Delete all documents in a group, then the group itself
-await client.groups.delete(group_id, { deleteDocuments: true });
+await client.groups.delete(group.id, { deleteDocuments: true });
 
 // Or separately
-await client.groups.deleteDocuments(group_id);
-await client.groups.delete(group_id);
+await client.groups.deleteDocuments(group.id);
+await client.groups.delete(group.id);
+
+// create() always makes a NEW group, even if the name exists — prefer
+// getOrCreate() unless you specifically want a fresh one each time.
 ```
 
 ### Documents
@@ -178,10 +191,18 @@ Polyvia runs a hosted [Model Context Protocol](https://modelcontextprotocol.io) 
 `https://app.polyvia.ai/mcp`. Connect your AI client once and it can ingest, search,
 and query documents without any manual tool-dispatch code.
 
+**Using Claude Code?** Add the server with one command:
+
+```bash
+claude mcp add --transport http polyvia https://app.polyvia.ai/mcp \
+  --header "Authorization: Bearer poly_<key>"
+```
+
 `client.mcp` returns an `MCPConfig` object with a helper for every major client:
 
 | Method | Use with |
 |--------|----------|
+| `claudeCodeCommand()` | The `claude mcp add …` command line above |
 | `toAnthropicMcpServer()` | `ant.beta.messages.create({ mcp_servers: [...] })` |
 | `toOpenAIResponsesTool()` | `oai.responses.create({ tools: [...] })` |
 | `toOpenAIMcpServer()` | OpenAI Agents SDK `MCPServerStreamableHTTP` |

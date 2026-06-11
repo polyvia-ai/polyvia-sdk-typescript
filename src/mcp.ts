@@ -48,4 +48,19 @@ export class MCPConfig {
     const snippet = { mcpServers: { polyvia: this.toClaudeDesktopConfig() } };
     console.log(JSON.stringify(snippet, null, 2));
   }
+
+  /** Return the `claude mcp add` command that registers this server in Claude Code. */
+  claudeCodeCommand(options: { name?: string } = {}): string {
+    const name = options.name ?? "polyvia";
+    const parts = ["claude", "mcp", "add", "--transport", "http", name, this.url];
+    for (const [key, value] of Object.entries(this.headers)) {
+      parts.push("--header", `"${key}: ${value}"`);
+    }
+    return parts.join(" ");
+  }
+
+  /** Print the `claude mcp add` command for Claude Code. */
+  printClaudeCodeCommand(options: { name?: string } = {}): void {
+    console.log(this.claudeCodeCommand(options));
+  }
 }

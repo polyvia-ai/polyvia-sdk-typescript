@@ -38,8 +38,10 @@ export interface Document {
 export interface Group {
   id: string;
   name: string;
-  color: string;
-  created_at: number;
+  /** Optional — not returned when a group is created, only when listed. */
+  color?: string;
+  /** Optional — not returned when a group is created, only when listed. */
+  created_at?: number;
 }
 
 export interface QueryResult {

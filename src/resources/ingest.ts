@@ -1,6 +1,7 @@
 import { readFile } from "node:fs/promises";
 import { basename, extname } from "node:path";
 import { IngestionError, IngestionTimeout, NotFoundError } from "../errors.js";
+import { resolveGroupId, type GroupRef } from "./groups.js";
 import type { Transport } from "../transport.js";
 import type {
   BatchIngestItem,
@@ -21,6 +22,10 @@ const DOC_STATUS_TO_TASK: Record<string, IngestionStatusValue> = {
 
 export interface IngestFileOptions {
   name?: string;
+  /** Group to file the document under — the group **name** (created if it
+   *  doesn't exist yet) or a {@link Group}. Prefer this over `groupId`. */
+  group?: GroupRef;
+  /** Explicit backend group id (advanced). Takes precedence over `group`. */
   groupId?: string;
   /** Override the inferred MIME type. */
   contentType?: string;
@@ -28,6 +33,10 @@ export interface IngestFileOptions {
 
 export interface IngestBatchOptions {
   names?: string[];
+  /** Group for every document — the group **name** (created once if missing)
+   *  or a {@link Group}. Resolved a single time for the whole batch. */
+  group?: GroupRef;
+  /** Explicit backend group id (advanced). Takes precedence over `group`. */
   groupId?: string;
   /** Override the inferred MIME type for each file (aligned with `sources`). */
   contentTypes?: string[];
@@ -180,9 +189,12 @@ export class IngestResource {
     options: IngestFileOptions = {},
   ): Promise<IngestResult> {
     const src = await toSource(source, options.name, options.contentType);
+    const groupId = await resolveGroupId(this.transport, options.group, options.groupId, {
+      create: true,
+    });
     const callOptions: { name?: string; groupId?: string } = {};
     if (options.name !== undefined) callOptions.name = options.name;
-    if (options.groupId !== undefined) callOptions.groupId = options.groupId;
+    if (groupId !== undefined) callOptions.groupId = groupId;
     return this.uploadOne(src, callOptions);
   }
 
@@ -192,6 +204,9 @@ export class IngestResource {
     sources: Array<string | Buffer | Blob>,
     options: IngestBatchOptions = {},
   ): Promise<BatchIngestItem[]> {
+    const groupId = await resolveGroupId(this.transport, options.group, options.groupId, {
+      create: true,
+    });
     const results: BatchIngestItem[] = [];
     for (let i = 0; i < sources.length; i++) {
       const explicitName = options.names?.[i];
@@ -210,7 +225,7 @@ export class IngestResource {
       }
       const callOptions: { name?: string; groupId?: string } = {};
       if (explicitName !== undefined) callOptions.name = explicitName;
-      if (options.groupId !== undefined) callOptions.groupId = options.groupId;
+      if (groupId !== undefined) callOptions.groupId = groupId;
       try {
         const r = await this.uploadOne(src, callOptions);
         results.push({
